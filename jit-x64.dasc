@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	unsigned int maxpc = 0;
 	int pcstack[MAX_NESTING];
 	int *top = pcstack, *limit = pcstack + MAX_NESTING;
-	int /*count = 0 ,*/ mode_copy, shift_count[100], add_count[100];
+	int count = 0 , mode_copy, shift_count[100], add_count[100];
 	int i, j;
 
 	// Function prologue.
@@ -91,36 +91,36 @@ int main(int argc, char *argv[])
 	for (char *p = read_file(argv[1]); *p; p++) {
 		switch (*p) {
 		case '>':
-			//count = Contraction(p);
-			//p += count -1;
-			//if(count == 1)
+			count = Contraction(p);
+			p += count -1;
+			if(count == 1)
 				|  inc  PTR
-			//else
-			//	|  add  PTR, count
+			else
+				|  add  PTR, count
 			break;
 		case '<':
-			//count = Contraction(p);
-			//p += count -1;
-			//if(count == 1)
+			count = Contraction(p);
+			p += count -1;
+			if(count == 1)
 				|  dec  PTR
-			//else
-			//	|  sub  PTR, count
+			else
+				|  sub  PTR, count
 			break;
 		case '+':
-			//count = Contraction(p);
-			//p += count -1;
-			//if(count == 1)
+			count = Contraction(p);
+			p += count -1;
+			if(count == 1)
 				|  inc  byte [PTR]
-			//else
-			//	|  add  byte [PTR], count
+			else
+				|  add  byte [PTR], count
 			break;
 		case '-':
-			//count = Contraction(p);
-			//p += count -1;
-			//if(count == 1)
+			count = Contraction(p);
+			p += count -1;
+			if(count == 1)
 				|  dec  byte [PTR]
-			//else
-			//	|  sub  byte [PTR], count
+			else
+				|  sub  byte [PTR], count
 			break;
 		case '.':
 			|  movzx edi, byte [PTR]
