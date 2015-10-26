@@ -41,6 +41,37 @@ unsigned int clearloop(char *p)
 	return 0;
 }
 
+int loop_check(char *p, int *shift_count, int *add_count)
+{
+	int count = 0;
+	int offset = 0;
+	int index_count = 0;
+
+	if(*(p + 1) != '-')
+		return -1;
+	p += 2;
+	while(*p != ']')
+	{
+		if(*p == '[' || *p == ',' || *p == '.' || *p == '-')	
+			return -1;
+		count = Contraction(p);
+		if(*p == '>')	
+			offset += count;
+		else if(*p == '<')	
+			offset -= count;
+		else if(*p == '+')	
+		{
+			shift_count[index_count] = offset;
+			add_count[index_count] = count;
+			index_count++;
+		}
+		p += count;
+	}
+	if(offset != 0)
+		return -1;
+	return index_count;
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc < 2) err("Usage: jit-x64 <inputfile>");
@@ -50,7 +81,8 @@ int main(int argc, char *argv[])
 	unsigned int maxpc = 0;
 	int pcstack[MAX_NESTING];
 	int *top = pcstack, *limit = pcstack + MAX_NESTING;
-	int count = 0;
+	int /*count = 0 ,*/ mode_copy, shift_count[100], add_count[100];
+	int i, j;
 
 	// Function prologue.
 	|  push PTR
@@ -59,36 +91,36 @@ int main(int argc, char *argv[])
 	for (char *p = read_file(argv[1]); *p; p++) {
 		switch (*p) {
 		case '>':
-			count = Contraction(p);
-			p += count -1;
-			if(count == 1)
+			//count = Contraction(p);
+			//p += count -1;
+			//if(count == 1)
 				|  inc  PTR
-			else
-				|  add  PTR, count
+			//else
+			//	|  add  PTR, count
 			break;
 		case '<':
-			count = Contraction(p);
-			p += count -1;
-			if(count == 1)
+			//count = Contraction(p);
+			//p += count -1;
+			//if(count == 1)
 				|  dec  PTR
-			else
-				|  sub  PTR, count
+			//else
+			//	|  sub  PTR, count
 			break;
 		case '+':
-			count = Contraction(p);
-			p += count -1;
-			if(count == 1)
+			//count = Contraction(p);
+			//p += count -1;
+			//if(count == 1)
 				|  inc  byte [PTR]
-			else
-				|  add  byte [PTR], count
+			//else
+			//	|  add  byte [PTR], count
 			break;
 		case '-':
-			count = Contraction(p);
-			p += count -1;
-			if(count == 1)
+			//count = Contraction(p);
+			//p += count -1;
+			//if(count == 1)
 				|  dec  byte [PTR]
-			else
-				|  sub  byte [PTR], count
+			//else
+			//	|  sub  byte [PTR], count
 			break;
 		case '.':
 			|  movzx edi, byte [PTR]
@@ -103,21 +135,28 @@ int main(int argc, char *argv[])
 			// Each loop gets two pclabels: at the beginning and end.
 			// We store pclabel offsets in a stack to link the loop
 			// begin and end together.
-			count = clearloop(p);
-			if(count == 1)
+			mode_copy = loop_check(p , shift_count, add_count);
+			if(mode_copy != -1)
 			{
-				|  mov   byte [PTR], 0
-				p += 2;
+				|  mov  dl, byte[PTR]
+				for(i = 0; i < mode_copy; i++)
+				{
+					for(j = 0; j < add_count[i]; j++)
+					{
+						|  add  byte[PTR + shift_count[i]], dl
+					}
+				}
+				|  mov  byte[PTR], 0
+				while(*p != ']')
+					p++;
+				break;
 			}
-			else
-			{
-				maxpc += 2;
-				*top++ = maxpc;
-				dasm_growpc(&state, maxpc);
-				|  cmp  byte [PTR], 0
-				|  je   =>(maxpc-2)
-				|=>(maxpc-1):
-			}	
+			maxpc += 2;
+			*top++ = maxpc;
+			dasm_growpc(&state, maxpc);
+			|  cmp  byte [PTR], 0
+			|  je   =>(maxpc-2)
+			|=>(maxpc-1):
 			break;
 		case ']':
 			if (top == pcstack) err("Unmatched ']'");
